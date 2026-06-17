@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VPNbox Dashboard</title>
+<style>
+:root {
+  --bg:       #1a1a2e;
+  --bg-card:  #16213e;
+  --bg-deep:  #0d1117;
+  --teal:     #2ab7c4;
+  --slate:    #4a788b;
+  --border:   #253050;
+  --text:     #dde6f0;
+  --dim:      #7a90a8;
+  --red:      #e05252;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* header */
+header{background:var(--bg-deep);border-bottom:2px solid var(--teal);padding:10px 24px;display:flex;align-items:center;gap:16px}
+header img{height:44px}
+.header-meta{margin-left:auto;font-size:.8rem;color:var(--dim)}
+
+/* main */
+main{padding:24px;max-width:1400px;margin:0 auto}
+.section-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.section-bar h2{font-size:1rem;color:var(--slate);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+
+/* grid / card */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:18px;transition:border-color .2s;border-left:4px solid var(--border)}
+.card.running{border-left-color:var(--teal)}.card.stopped{border-left-color:var(--red)}.card.pending{border-left-color:var(--slate)}
+.card:hover{border-color:var(--slate)}
+.card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
+.vpn-name{font-size:1.05rem;font-weight:600}.vpn-type{font-size:.75rem;color:var(--dim);margin-top:3px}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:12px;font-size:.78rem;font-weight:600}
+.badge.running{background:rgba(42,183,196,.12);color:var(--teal);border:1px solid rgba(42,183,196,.3)}
+.badge.stopped{background:rgba(224,82,82,.12);color:var(--red);border:1px solid rgba(224,82,82,.3)}
+.badge.pending{background:rgba(74,120,139,.12);color:var(--slate);border:1px solid rgba(74,120,139,.3)}
+.dot{width:7px;height:7px;border-radius:50%;background:currentColor}.dot.running{animation:pulse 1.6s ease infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.spinner{width:14px;height:14px;border-radius:50%;border:2px solid rgba(74,120,139,.3);border-top-color:var(--slate);animation:spin .75s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.card-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* buttons */
+.btn{padding:6px 13px;border-radius:5px;border:none;cursor:pointer;font-size:.83rem;font-weight:500;transition:all .18s;display:inline-flex;align-items:center;gap:5px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-start{background:var(--teal);color:#0d1117}.btn-start:hover:not(:disabled){background:#22c9d6}
+.btn-stop{background:transparent;color:var(--red);border:1px solid var(--red)}.btn-stop:hover:not(:disabled){background:rgba(224,82,82,.1)}
+.btn-ghost{background:transparent;color:var(--dim);border:1px solid var(--border)}.btn-ghost:hover{color:var(--text);border-color:var(--slate)}
+.btn-save{background:var(--slate);color:#fff}.btn-save:hover:not(:disabled){background:#5a8fa0}
+.btn-sm{padding:3px 9px;font-size:.8rem}
+
+/* empty */
+.empty{text-align:center;padding:60px 24px;color:var(--dim);grid-column:1/-1}
+.empty h3{color:var(--slate);margin-bottom:8px}
+
+/* modal */
+.overlay{display:none;position:fixed;inset:0;background:rgba(13,17,23,.88);z-index:1000;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;width:90%;max-width:780px;max-height:90vh;display:flex;flex-direction:column}
+.modal-head{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-head h3{color:var(--teal);font-size:.95rem}
+.close-btn{background:none;border:none;color:var(--dim);cursor:pointer;font-size:1.1rem;padding:4px 8px;border-radius:4px}
+.close-btn:hover{color:var(--text);background:var(--border)}
+.modal-body{padding:16px 20px;flex:1;overflow:auto}
+.modal-foot{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+
+/* logs */
+#logs{background:var(--bg-deep);border:1px solid var(--border);border-radius:5px;padding:12px;font-family:'Consolas','Monaco',monospace;font-size:.78rem;line-height:1.5;white-space:pre-wrap;overflow-y:auto;max-height:420px;color:#9ab5c0}
+
+/* error / toast */
+.err{font-size:.8rem;color:var(--red);margin-top:8px;display:none}
+.toast{position:fixed;bottom:24px;right:24px;padding:11px 20px;border-radius:6px;font-size:.88rem;font-weight:500;z-index:2000;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.ok{background:rgba(42,183,196,.18);border:1px solid var(--teal);color:var(--teal)}
+.toast.fail{background:rgba(224,82,82,.18);border:1px solid var(--red);color:var(--red)}
+
+/* ── form ─────────────────────────────────────────── */
+.fsec{background:var(--bg-deep);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px}
+.fsec-title{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--slate);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.frow{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.frow:last-child{margin-bottom:0}
+.frow.top{align-items:flex-start}
+.frow.top .flabel{padding-top:8px}
+.flabel{flex-shrink:0;width:138px;font-size:.81rem;color:var(--dim);text-align:right}
+.fc{flex:1;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:5px;padding:6px 10px;font-size:.84rem;transition:border-color .2s;min-width:0}
+.fc:focus{outline:none;border-color:var(--slate)}
+select.fc{cursor:pointer}
+input[type=number].fc{max-width:100px;flex:none}
+
+/* toggle */
+.tog{position:relative;display:inline-flex;align-items:center;cursor:pointer}
+.tog input{position:absolute;opacity:0;width:0;height:0}
+.tog-sl{width:40px;height:22px;background:var(--border);border-radius:11px;transition:background .2s;position:relative;flex-shrink:0}
+.tog-sl::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#aaa;transition:transform .2s}
+.tog input:checked + .tog-sl{background:var(--teal)}
+.tog input:checked + .tog-sl::after{transform:translateX(18px);background:#fff}
+
+/* tag list */
+.tagwrap{flex:1;display:flex;flex-wrap:wrap;gap:5px;padding:5px 8px;min-height:36px;background:var(--bg);border:1px solid var(--border);border-radius:5px;align-items:center}
+.tagwrap:focus-within{border-color:var(--slate)}
+.tag{display:inline-flex;align-items:center;gap:3px;background:rgba(74,120,139,.2);border:1px solid rgba(74,120,139,.45);border-radius:4px;padding:2px 6px 2px 8px;font-size:.8rem;color:var(--text)}
+.tag-x{background:none;border:none;cursor:pointer;color:var(--dim);padding:0 2px;font-size:1rem;line-height:1}
+.tag-x:hover{color:var(--red)}
+.taginput{flex:1;min-width:100px;background:transparent;border:none;color:var(--text);font-size:.82rem;padding:2px 4px;outline:none}
+.taginput::placeholder{color:var(--dim)}
+
+/* list rows (keepalive / cmds) */
+.listbox{flex:1;display:flex;flex-direction:column;gap:6px}
+.karow,.cmdrow{display:flex;gap:5px;align-items:center}
+.ka-type{width:68px!important;flex:none!important}
+.ka-ivl{width:76px!important;flex:none!important;text-align:center}
+.cmdrow .fc{font-family:'Consolas','Monaco',monospace;font-size:.8rem}
+
+/* advanced */
+.advdet{margin-top:6px}
+.advsum{cursor:pointer;list-style:none;display:flex;align-items:center;gap:7px;padding:9px 16px;background:var(--bg-deep);border:1px solid var(--border);border-radius:8px;font-size:.78rem;font-weight:700;color:var(--slate);text-transform:uppercase;letter-spacing:.06em;user-select:none}
+.advsum::-webkit-details-marker{display:none}
+.advcaret{font-size:.65rem;transition:transform .2s;display:inline-block}
+details[open] .advcaret{transform:rotate(90deg)}
+.advbody{margin-top:6px}
+</style>
+</head>
+<body>
+
+<header>
+  <img src="/vpnbox.png" alt="VPNbox">
+  <div class="header-meta" id="refresh-info">Loading…</div>
+</header>
+
+<main>
+  <div class="section-bar">
+    <h2>VPN Connections</h2>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" onclick="load()">↺ Refresh</button>
+      <button class="btn btn-start" onclick="newVpn()">+ New VPN</button>
+    </div>
+  </div>
+  <div class="grid" id="grid"><div class="empty"><h3>Loading…</h3></div></div>
+
+  <!-- ── Services section ──────────────────────────── -->
+  <div style="margin-top:32px">
+    <div class="section-bar">
+      <h2>System Services</h2>
+      <button class="btn btn-ghost" onclick="loadSvcs()">↺ Refresh</button>
+    </div>
+    <div class="grid" id="svc-grid"><div class="empty"><h3>Loading…</h3></div></div>
+  </div>
+</main>
+
+<!-- Config modal -->
+<div class="overlay" id="cfg-overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="cfg-heading">Config</h3>
+      <button class="close-btn" onclick="close_('cfg-overlay')">✕</button>
+    </div>
+    <div class="modal-body">
+      <form id="cfg-form" onsubmit="return false">
+
+        <!-- Name (new VPN only) -->
+        <div id="new-name-row" class="fsec" style="display:none">
+          <div class="frow">
+            <label class="flabel" for="f-vpn-name">VPN Name</label>
+            <input type="text" id="f-vpn-name" class="fc" placeholder="my-vpn" autocomplete="off">
+          </div>
+        </div>
+
+        <!-- Common -->
+        <div class="fsec">
+          <div class="frow">
+            <label class="flabel" for="f-type">VPN Type</label>
+            <select id="f-type" class="fc" style="max-width:210px" onchange="onTypeChange()">
+              <option value="openconnect">openconnect</option>
+              <option value="openvpn">openvpn</option>
+              <option value="ipsec">ipsec</option>
+            </select>
+          </div>
+          <div class="frow">
+            <label class="flabel" for="f-iface">Interface ID</label>
+            <input type="number" id="f-iface" class="fc" min="1" max="999">
+          </div>
+          <div class="frow">
+            <span class="flabel">Debug Logging</span>
+            <label class="tog"><input type="checkbox" id="f-debug"><span class="tog-sl"></span></label>
+          </div>
+        </div>
+
+        <!-- OpenConnect -->
+        <div class="fsec vpnsec" data-vtype="openconnect">
+          <div class="fsec-title">OpenConnect</div>
+          <div class="frow">
+            <label class="flabel" for="f-oc-srv">Server</label>
+            <input type="text" id="f-oc-srv" class="fc" placeholder="vpn.example.com">
+          </div>
+          <div class="frow">
+            <label class="flabel" for="f-oc-user">Username</label>
+            <input type="text" id="f-oc-user" class="fc" autocomplete="off">
+          </div>
+          <div class="frow">
+            <label class="flabel" for="f-oc-pass">Password</label>
+            <input type="password" id="f-oc-pass" class="fc" autocomplete="new-password">
+          </div>
+          <div class="frow">
+            <label class="flabel" for="f-oc-proto">Protocol</label>
+            <select id="f-oc-proto" class="fc" style="max-width:240px">
+              <option value="anyconnect">anyconnect (Cisco)</option>
+              <option value="f5">f5 (BIG-IP)</option>
+              <option value="gp">gp (GlobalProtect)</option>
+              <option value="pulse">pulse (Ivanti)</option>
+              <option value="nc">nc (Juniper)</option>
+              <option value="array">array (Array Networks)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- OpenVPN -->
+        <div class="fsec vpnsec" data-vtype="openvpn">
+          <div class="fsec-title">OpenVPN</div>
+          <div class="frow">
+            <label class="flabel" for="f-ovpn-cfg">Config File</label>
+            <input type="text" id="f-ovpn-cfg" class="fc" placeholder="/data/vpns/example.ovpn">
+          </div>
+          <div class="frow">
+            <label class="flabel" for="f-ovpn-user">Username</label>
+            <input type="text" id="f-ovpn-user" class="fc" autocomplete="off">
+          </div>
+          <div class="frow">
+            <label class="flabel" for="f-ovpn-pass">Password</label>
+            <input type="password" id="f-ovpn-pass" class="fc" autocomplete="new-password">
+          </div>
+        </div>
+
+        <!-- IPsec -->
+        <div class="fsec vpnsec" data-vtype="ipsec">
+          <div class="fsec-title">IPsec / IKEv2</div>
+          <div class="frow">
+            <label class="flabel" for="f-ip-gw">Remote Gateway</label>
+            <input type="text" id="f-ip-gw" class="fc" placeholder="vpn.example.com">
+          </div>
+          <div class="frow">
+            <label class="flabel" for="f-ip-mode">Mode</label>
+            <select id="f-ip-mode" class="fc" style="max-width:240px" onchange="onIpsecChange()">
+              <option value="roadwarrior">Road Warrior (client)</option>
+              <option value="site-to-site">Site-to-Site</option>
+            </select>
+          </div>
+          <div class="frow">
+            <label class="flabel" for="f-ip-auth">Auth Type</label>
+            <select id="f-ip-auth" class="fc" style="max-width:240px" onchange="onIpsecChange()">
+              <option value="eap">EAP (username / password)</option>
+              <option value="psk">Pre-Shared Key</option>
+              <option value="xauth-psk">Pre-Shared Key + XAuth</option>
+              <option value="cert">Certificate</option>
+            </select>
+          </div>
+          <!-- EAP -->
+          <div id="ip-eap">
+            <div class="frow">
+              <label class="flabel" for="f-ip-eapuser">EAP Username</label>
+              <input type="text" id="f-ip-eapuser" class="fc" autocomplete="off">
+            </div>
+            <div class="frow">
+              <label class="flabel" for="f-ip-eappass">EAP Password</label>
+              <input type="password" id="f-ip-eappass" class="fc" autocomplete="new-password">
+            </div>
+          </div>
+          <!-- PSK (also used for XAuth+PSK) -->
+          <div id="ip-psk">
+            <div class="frow">
+              <label class="flabel" for="f-ip-psk">Pre-Shared Key</label>
+              <input type="password" id="f-ip-psk" class="fc" autocomplete="new-password">
+            </div>
+          </div>
+          <!-- XAuth (used together with the PSK field above) -->
+          <div id="ip-xauth">
+            <div class="frow">
+              <label class="flabel" for="f-ip-xauthuser">XAuth Username</label>
+              <input type="text" id="f-ip-xauthuser" class="fc" autocomplete="off">
+            </div>
+            <div class="frow">
+              <label class="flabel" for="f-ip-xauthpass">XAuth Password</label>
+              <input type="password" id="f-ip-xauthpass" class="fc" autocomplete="new-password">
+            </div>
+            <div class="frow">
+              <span class="flabel" title="Required by most Cisco/Juniper-style gateways so the PSK can be looked up by ID before the key exchange completes">Aggressive Mode</span>
+              <label class="tog"><input type="checkbox" id="f-ip-aggressive" checked><span class="tog-sl"></span></label>
+            </div>
+          </div>
+          <!-- Roadwarrior only -->
+          <div id="ip-vip">
+            <div class="frow">
+              <span class="flabel">Request Virtual IP</span>
+              <label class="tog"><input type="checkbox" id="f-ip-vip"><span class="tog-sl"></span></label>
+            </div>
+          </div>
+          <!-- Site-to-site only -->
+          <div id="ip-subnets">
+            <div class="frow top">
+              <label class="flabel" for="ti-subnets">Remote Subnets</label>
+              <div class="tagwrap" id="tl-subnets">
+                <input type="text" class="taginput" id="ti-subnets" placeholder="10.0.0.0/8"
+                  onkeydown="if(event.key==='Enter'){tagAdd('ti-subnets','tl-subnets');event.preventDefault()}">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Network -->
+        <div class="fsec">
+          <div class="fsec-title">Network</div>
+          <div class="frow top">
+            <label class="flabel" for="ti-domains">Split Domains</label>
+            <div class="tagwrap" id="tl-domains">
+              <input type="text" class="taginput" id="ti-domains" placeholder="example.com"
+                onkeydown="if(event.key==='Enter'){tagAdd('ti-domains','tl-domains');event.preventDefault()}">
+            </div>
+          </div>
+          <div class="frow top">
+            <label class="flabel" for="ti-routes">Manual Routes</label>
+            <div class="tagwrap" id="tl-routes">
+              <input type="text" class="taginput" id="ti-routes" placeholder="192.168.1.0/24"
+                onkeydown="if(event.key==='Enter'){tagAdd('ti-routes','tl-routes');event.preventDefault()}">
+            </div>
+          </div>
+          <div class="frow top">
+            <label class="flabel" for="ti-exported-routes" title="Announced to RIPv2 peers via BIRD">Exported Routes</label>
+            <div class="tagwrap" id="tl-exported-routes">
+              <input type="text" class="taginput" id="ti-exported-routes" placeholder="10.0.0.0/8"
+                onkeydown="if(event.key==='Enter'){tagAdd('ti-exported-routes','tl-exported-routes');event.preventDefault()}">
+            </div>
+          </div>
+          <div class="frow top">
+            <span class="flabel">Keepalive</span>
+            <div id="ka-list" class="listbox">
+              <button type="button" class="btn btn-ghost btn-sm ka-add" onclick="kaAdd()">+ Add keepalive</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Advanced -->
+        <details class="advdet">
+          <summary class="advsum"><span class="advcaret">▶</span>Advanced</summary>
+          <div class="advbody">
+            <div class="fsec">
+              <div class="frow">
+                <label class="flabel" for="f-logfile">Log File</label>
+                <input type="text" id="f-logfile" class="fc">
+              </div>
+              <div class="frow">
+                <label class="flabel" for="f-pidfile">PID File</label>
+                <input type="text" id="f-pidfile" class="fc">
+              </div>
+              <!-- per-type advanced -->
+              <div class="vpnadv" data-vtype="openconnect">
+                <div class="frow">
+                  <label class="flabel" for="f-oc-cfgfile">OC Config File</label>
+                  <input type="text" id="f-oc-cfgfile" class="fc" placeholder="/etc/openconnect.cfg">
+                </div>
+                <div class="frow">
+                  <label class="flabel" for="f-oc-args">Extra Args</label>
+                  <input type="text" id="f-oc-args" class="fc" placeholder="--no-dtls …">
+                </div>
+              </div>
+              <div class="vpnadv" data-vtype="openvpn">
+                <div class="frow">
+                  <label class="flabel" for="f-ovpn-args">Extra Args</label>
+                  <input type="text" id="f-ovpn-args" class="fc">
+                </div>
+              </div>
+              <div class="vpnadv" data-vtype="ipsec">
+                <div class="frow">
+                  <label class="flabel" for="f-ip-lid">Local ID</label>
+                  <input type="text" id="f-ip-lid" class="fc" placeholder="%any">
+                </div>
+                <div class="frow">
+                  <label class="flabel" for="f-ip-rid">Remote ID</label>
+                  <input type="text" id="f-ip-rid" class="fc" placeholder="%any">
+                </div>
+                <div class="frow">
+                  <label class="flabel" for="f-ip-dns">DNS Server</label>
+                  <input type="text" id="f-ip-dns" class="fc" placeholder="10.0.0.53">
+                </div>
+                <div class="frow">
+                  <label class="flabel" for="f-ip-ikeprop" title="Leave empty to use strongSwan's default proposal set">IKE Proposals</label>
+                  <input type="text" id="f-ip-ikeprop" class="fc" placeholder="default (e.g. aes256-sha256-modp2048)">
+                </div>
+                <div class="frow">
+                  <label class="flabel" for="f-ip-espprop" title="Leave empty to use strongSwan's default proposal set">ESP Proposals</label>
+                  <input type="text" id="f-ip-espprop" class="fc" placeholder="default (e.g. aes256-sha256)">
+                </div>
+              </div>
+              <!-- up/down cmds -->
+              <div class="frow top">
+                <span class="flabel">Up Commands</span>
+                <div id="cl-up" class="listbox">
+                  <button type="button" class="btn btn-ghost btn-sm cmd-add" onclick="cmdAdd('cl-up')">+ Add command</button>
+                </div>
+              </div>
+              <div class="frow top">
+                <span class="flabel">Down Commands</span>
+                <div id="cl-dn" class="listbox">
+                  <button type="button" class="btn btn-ghost btn-sm cmd-add" onclick="cmdAdd('cl-dn')">+ Add command</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </details>
+
+      </form>
+      <div class="err" id="cfg-err"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="close_('cfg-overlay')">Cancel</button>
+      <button class="btn btn-save" onclick="saveCfg()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Log modal -->
+<div class="overlay" id="log-overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Logs: <span id="log-name"></span></h3>
+      <button class="close-btn" onclick="close_('log-overlay')">✕</button>
+    </div>
+    <div class="modal-body"><div id="logs">Loading…</div></div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="reloadLogs()">↺ Refresh</button>
+      <button class="btn btn-ghost" onclick="close_('log-overlay')">Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let curCfg = null, curLog = null, isNew = false;
+const pending = new Map();
+
+/* ── utilities ─────────────────────────────────── */
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+function toast(msg,ok=true){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast ${ok?'ok':'fail'} show`;setTimeout(()=>t.classList.remove('show'),3400)}
+function open_(id){document.getElementById(id).classList.add('open')}
+function close_(id){document.getElementById(id).classList.remove('open')}
+function now24(){return new Date().toLocaleTimeString([],{hour12:false})}
+
+document.querySelectorAll('.overlay').forEach(o=>
+  o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open')}));
+
+/* ── card rendering ────────────────────────────── */
+function card(v){
+  const p=pending.get(v.name);
+  if(p) return `
+<div class="card pending" id="c-${esc(v.name)}">
+  <div class="card-top"><div><div class="vpn-name">${esc(v.name)}</div><div class="vpn-type">${esc(v.type)}</div></div>
+    <div class="badge pending"><span class="spinner"></span>${p.expected==='running'?'Starting…':'Stopping…'}</div></div>
+  <div class="card-actions">
+    <button class="btn btn-ghost" disabled><span class="spinner"></span> ${p.expected==='running'?'Starting':'Stopping'}</button>
+    <button class="btn btn-ghost" onclick="openCfg('${esc(v.name)}')">⚙ Config</button>
+    <button class="btn btn-ghost" onclick="openLog('${esc(v.name)}')">📋 Logs</button>
+  </div></div>`;
+  const run=v.status==='running';
+  return `
+<div class="card ${v.status}" id="c-${esc(v.name)}">
+  <div class="card-top"><div><div class="vpn-name">${esc(v.name)}</div><div class="vpn-type">${esc(v.type)}</div></div>
+    <div class="badge ${v.status}"><span class="dot ${v.status}"></span>${v.status}</div></div>
+  <div class="card-actions">
+    ${run?`<button class="btn btn-stop" onclick="act('${esc(v.name)}','stop')">■ Stop</button>`
+         :`<button class="btn btn-start" onclick="act('${esc(v.name)}','start')">▶ Start</button>`}
+    <button class="btn btn-ghost" onclick="openCfg('${esc(v.name)}')">⚙ Config</button>
+    <button class="btn btn-ghost" onclick="openLog('${esc(v.name)}')">📋 Logs</button>
+    <button class="btn btn-ghost btn-sm" style="margin-left:auto;color:var(--red);border-color:rgba(224,82,82,.4)" onclick="deleteVpn('${esc(v.name)}')">✕ Delete</button>
+  </div></div>`;
+}
+
+/* ── pending poll ──────────────────────────────── */
+function startPending(name,expected){
+  const ex=pending.get(name);if(ex)clearInterval(ex.timer);
+  const deadline=Date.now()+30000;
+  const timer=setInterval(async()=>{
+    try{
+      const d=await fetch(`/api/vpn/${name}/status`).then(r=>r.json());
+      if(d.status===expected){clearInterval(timer);pending.delete(name);toast(`${name}: ${expected==='running'?'started':'stopped'}`);load()}
+      else if(Date.now()>deadline){clearInterval(timer);pending.delete(name);toast(`${name}: timeout — check logs`,false);load()}
+    }catch(e){clearInterval(timer);pending.delete(name);toast(`${name}: connection error`,false);load()}
+  },1500);
+  pending.set(name,{expected,timer,deadline});
+}
+
+/* ── load list ─────────────────────────────────── */
+async function load(){
+  try{
+    const vpns=await fetch('/api/vpns').then(r=>r.json());
+    document.getElementById('refresh-info').textContent='↻ '+now24();
+    const g=document.getElementById('grid');
+    g.innerHTML=vpns.length?vpns.map(card).join(''):'<div class="empty"><h3>No VPN configs found</h3><p>Add JSON files to /data/vpns/</p></div>';
+  }catch(e){document.getElementById('refresh-info').textContent='⚠ Connection error'}
+}
+
+/* ── start / stop ──────────────────────────────── */
+async function act(name,action){
+  const expected=action==='start'?'running':'stopped';
+  startPending(name,expected);load();
+  try{
+    const d=await fetch(`/api/vpn/${name}/${action}`,{method:'POST'}).then(r=>r.json());
+    if(!d.ok){pending.delete(name);toast(`Error: ${d.error}`,false);load()}
+  }catch(e){pending.delete(name);toast('Connection error',false);load()}
+}
+
+/* ── form helpers ──────────────────────────────── */
+const gv=id=>document.getElementById(id).value;
+const sv=(id,v)=>{document.getElementById(id).value=v??''};
+const gb=id=>document.getElementById(id).checked;
+const sb=(id,v)=>{document.getElementById(id).checked=!!v};
+
+function onTypeChange(){
+  const t=gv('f-type');
+  document.querySelectorAll('.vpnsec').forEach(s=>s.style.display=s.dataset.vtype===t?'':'none');
+  document.querySelectorAll('.vpnadv').forEach(s=>s.style.display=s.dataset.vtype===t?'':'none');
+}
+
+function onIpsecChange(){
+  const mode=gv('f-ip-mode'), auth=gv('f-ip-auth');
+  document.getElementById('ip-eap').style.display=auth==='eap'?'':'none';
+  document.getElementById('ip-psk').style.display=(auth==='psk'||auth==='xauth-psk')?'':'none';
+  document.getElementById('ip-xauth').style.display=auth==='xauth-psk'?'':'none';
+  document.getElementById('ip-vip').style.display=mode==='roadwarrior'?'':'none';
+  document.getElementById('ip-subnets').style.display=mode==='site-to-site'?'':'none';
+}
+
+/* ── tag lists ─────────────────────────────────── */
+function tagSet(wrapId,vals){
+  const w=document.getElementById(wrapId);
+  w.querySelectorAll('.tag').forEach(t=>t.remove());
+  (vals||[]).forEach(v=>_tagInsert(w,v));
+}
+function _tagInsert(wrap,val){
+  if(!val||!String(val).trim())return;
+  val=String(val).trim();
+  const inp=wrap.querySelector('.taginput');
+  const t=document.createElement('span');
+  t.className='tag';t.dataset.value=val;
+  t.innerHTML=`${esc(val)} <button type="button" class="tag-x" onclick="this.parentElement.remove()">×</button>`;
+  wrap.insertBefore(t,inp);
+}
+function tagAdd(inputId,wrapId){
+  const inp=document.getElementById(inputId);
+  const v=inp.value.trim();
+  if(v)_tagInsert(document.getElementById(wrapId),v);
+  inp.value='';inp.focus();
+}
+function tagGet(wrapId){
+  return [...document.getElementById(wrapId).querySelectorAll('.tag')].map(t=>t.dataset.value);
+}
+
+/* ── keepalive list ────────────────────────────── */
+function kaSet(items){
+  const c=document.getElementById('ka-list');
+  c.querySelectorAll('.karow').forEach(r=>r.remove());
+  (items||[]).forEach(item=>_kaInsert(c,item));
+}
+function kaAdd(){_kaInsert(document.getElementById('ka-list'),{})}
+function _kaInsert(c,item){
+  const btn=c.querySelector('.ka-add');
+  const row=document.createElement('div');row.className='karow';
+  row.innerHTML=`
+    <select class="fc ka-type"><option value="ping">ping</option></select>
+    <input type="text" class="fc ka-tgt" placeholder="target host" value="${esc(item.target||'')}">
+    <input type="number" class="fc ka-ivl" placeholder="sec" value="${item.interval||60}" min="1">
+    <button type="button" class="btn btn-ghost btn-sm" onclick="this.closest('.karow').remove()">×</button>`;
+  if(item.type)row.querySelector('.ka-type').value=item.type;
+  c.insertBefore(row,btn);
+}
+function kaGet(){
+  return [...document.querySelectorAll('#ka-list .karow')].map(r=>({
+    type:r.querySelector('.ka-type').value,
+    target:r.querySelector('.ka-tgt').value.trim(),
+    interval:parseInt(r.querySelector('.ka-ivl').value)||60,
+  })).filter(k=>k.target);
+}
+
+/* ── cmd list ──────────────────────────────────── */
+function cmdSet(id,cmds){
+  const c=document.getElementById(id);
+  c.querySelectorAll('.cmdrow').forEach(r=>r.remove());
+  (cmds||[]).forEach(v=>_cmdInsert(c,v));
+}
+function cmdAdd(id){_cmdInsert(document.getElementById(id),'')}
+function _cmdInsert(c,val){
+  const btn=c.querySelector('.cmd-add');
+  const row=document.createElement('div');row.className='cmdrow';
+  row.innerHTML=`
+    <input type="text" class="fc cmd-input" placeholder="shell command" value="${esc(val)}">
+    <button type="button" class="btn btn-ghost btn-sm" onclick="this.closest('.cmdrow').remove()">×</button>`;
+  c.insertBefore(row,btn);
+}
+function cmdGet(id){
+  return [...document.getElementById(id).querySelectorAll('.cmd-input')].map(i=>i.value.trim()).filter(v=>v);
+}
+
+/* ── form load / collect ───────────────────────── */
+function formLoad(cfg){
+  sv('f-type',cfg.type||'openconnect');
+  sv('f-iface',cfg.interface_id??'');
+  sb('f-debug',cfg.debug||false);
+  sv('f-logfile',cfg.log_file||'');
+  sv('f-pidfile',cfg.pid_file||'');
+
+  const oc=cfg.openconnect||{};
+  sv('f-oc-srv',oc.server||'');sv('f-oc-user',oc.username||'');sv('f-oc-pass',oc.password||'');
+  sv('f-oc-proto',oc.protocol||'anyconnect');
+  sv('f-oc-cfgfile',oc.config_file||'');sv('f-oc-args',oc.additional_args||'');
+
+  const ov=cfg.openvpn||{};
+  sv('f-ovpn-cfg',ov.config_file||'');sv('f-ovpn-user',ov.username||'');sv('f-ovpn-pass',ov.password||'');
+  sv('f-ovpn-args',ov.additional_args||'');
+
+  const ip=cfg.ipsec||{};
+  sv('f-ip-gw',ip.remote_gateway||'');sv('f-ip-mode',ip.mode||'roadwarrior');sv('f-ip-auth',ip.auth_type||'eap');
+  sv('f-ip-eapuser',ip.eap_username||'');sv('f-ip-eappass',ip.eap_password||'');
+  sv('f-ip-psk',ip.psk||'');sb('f-ip-vip',ip.virtual_ip||false);
+  sv('f-ip-xauthuser',ip.xauth_username||'');sv('f-ip-xauthpass',ip.xauth_password||'');
+  sb('f-ip-aggressive',ip.aggressive!==false);
+  sv('f-ip-lid',ip.local_id||'');sv('f-ip-rid',ip.remote_id||'');sv('f-ip-dns',ip.dns_server||'');
+  sv('f-ip-ikeprop',ip.ike_proposals||'');sv('f-ip-espprop',ip.esp_proposals||'');
+  tagSet('tl-subnets',ip.remote_subnets||[]);
+
+  tagSet('tl-domains',cfg.additional_domains||[]);
+  tagSet('tl-routes',cfg.manual_routes||[]);
+  tagSet('tl-exported-routes',cfg.exported_routes||[]);
+  kaSet(cfg.keepalive||[]);
+  cmdSet('cl-up',cfg.up_cmds||[]);
+  cmdSet('cl-dn',cfg.down_cmds||[]);
+
+  onTypeChange();
+  onIpsecChange();
+}
+
+function formCollect(){
+  const type=gv('f-type');
+  const cfg={
+    type,
+    interface_id:parseInt(gv('f-iface'))||0,
+    log_file:gv('f-logfile'),
+    pid_file:gv('f-pidfile'),
+    debug:gb('f-debug'),
+  };
+
+  if(type==='openconnect'){
+    cfg.openconnect={
+      server:gv('f-oc-srv'),username:gv('f-oc-user'),password:gv('f-oc-pass'),
+      protocol:gv('f-oc-proto'),config_file:gv('f-oc-cfgfile'),additional_args:gv('f-oc-args'),
+    };
+  } else if(type==='openvpn'){
+    cfg.openvpn={
+      config_file:gv('f-ovpn-cfg'),username:gv('f-ovpn-user'),password:gv('f-ovpn-pass'),
+      additional_args:gv('f-ovpn-args'),
+    };
+  } else if(type==='ipsec'){
+    const mode=gv('f-ip-mode'),auth=gv('f-ip-auth');
+    const ip={mode,remote_gateway:gv('f-ip-gw'),auth_type:auth,
+               local_id:gv('f-ip-lid'),remote_id:gv('f-ip-rid'),dns_server:gv('f-ip-dns'),
+               ike_proposals:gv('f-ip-ikeprop'),esp_proposals:gv('f-ip-espprop')};
+    if(auth==='eap'){ip.eap_username=gv('f-ip-eapuser');ip.eap_password=gv('f-ip-eappass')}
+    else if(auth==='psk'){ip.psk=gv('f-ip-psk')}
+    else if(auth==='xauth-psk'){ip.psk=gv('f-ip-psk');ip.xauth_username=gv('f-ip-xauthuser');
+               ip.xauth_password=gv('f-ip-xauthpass');ip.aggressive=gb('f-ip-aggressive')}
+    if(mode==='roadwarrior') ip.virtual_ip=gb('f-ip-vip');
+    else if(mode==='site-to-site') ip.remote_subnets=tagGet('tl-subnets');
+    cfg.ipsec=ip;
+  }
+
+  cfg.keepalive=kaGet();
+  cfg.additional_domains=tagGet('tl-domains');
+  cfg.manual_routes=tagGet('tl-routes');
+  cfg.exported_routes=tagGet('tl-exported-routes');
+  cfg.up_cmds=cmdGet('cl-up');
+  cfg.down_cmds=cmdGet('cl-dn');
+  return cfg;
+}
+
+/* ── config modal ──────────────────────────────── */
+function newVpn(){
+  curCfg=null;isNew=true;
+  document.getElementById('cfg-heading').textContent='New VPN';
+  document.getElementById('new-name-row').style.display='';
+  document.getElementById('f-vpn-name').value='';
+  document.getElementById('cfg-err').style.display='none';
+  formLoad({type:'openconnect'});
+  open_('cfg-overlay');
+}
+
+async function openCfg(name){
+  curCfg=name;isNew=false;
+  document.getElementById('cfg-heading').textContent='Config: '+name;
+  document.getElementById('new-name-row').style.display='none';
+  document.getElementById('cfg-err').style.display='none';
+  formLoad({type:'openconnect'});  // clean slate while loading
+  open_('cfg-overlay');
+  try{
+    const txt=await fetch(`/api/vpn/${name}/config`).then(r=>r.text());
+    formLoad(JSON.parse(txt));
+  }catch(e){
+    const el=document.getElementById('cfg-err');
+    el.textContent='Error loading config: '+e.message;el.style.display='block';
+  }
+}
+
+async function saveCfg(){
+  const errEl=document.getElementById('cfg-err');
+  errEl.style.display='none';
+  let cfg;
+  try{cfg=formCollect()}catch(e){errEl.textContent='Form error: '+e.message;errEl.style.display='block';return}
+  let name=curCfg;
+  if(isNew){
+    name=document.getElementById('f-vpn-name').value.trim();
+    if(!name){errEl.textContent='VPN Name is required';errEl.style.display='block';return}
+    if(!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(name)){
+      errEl.textContent='Name must start with a letter/digit and may only contain letters, digits, - and _';
+      errEl.style.display='block';return;
+    }
+  }
+  if(!name)return;
+  try{
+    const body=JSON.stringify(cfg,null,2);
+    const d=await fetch(`/api/vpn/${name}/config`,
+      {method:'PUT',body,headers:{'Content-Type':'application/json'}}).then(r=>r.json());
+    if(d.ok){toast(`VPN "${name}" ${isNew?'created':'saved'}`);close_('cfg-overlay');load()}
+    else{errEl.textContent=d.error||'Error';errEl.style.display='block'}
+  }catch(e){errEl.textContent='Connection error';errEl.style.display='block'}
+}
+
+async function deleteVpn(name){
+  if(!confirm(`Delete VPN "${name}"?\nThis cannot be undone.`))return;
+  try{
+    const d=await fetch(`/api/vpn/${name}`,{method:'DELETE'}).then(r=>r.json());
+    if(d.ok){toast(`VPN "${name}" deleted`);load()}
+    else{toast(`Error: ${d.error}`,false)}
+  }catch(e){toast('Connection error',false)}
+}
+
+/* ── log modal ─────────────────────────────────── */
+async function openLog(name){
+  curLog=name;document.getElementById('log-name').textContent=name;
+  document.getElementById('logs').textContent='Loading…';open_('log-overlay');
+  await reloadLogs();
+}
+async function reloadLogs(){
+  if(!curLog)return;
+  try{
+    const txt=await fetch(`/api/vpn/${curLog}/logs`).then(r=>r.text());
+    const el=document.getElementById('logs');el.textContent=txt||'(no log entries yet)';el.scrollTop=el.scrollHeight;
+  }catch(e){document.getElementById('logs').textContent='Error loading logs'}
+}
+
+/* ── services ──────────────────────────────────── */
+function svcCard(s){
+  const run=s.status==='running';
+  const starting=s.status==='starting'||s.status==='stopping';
+  const statusClass=run?'running':starting?'pending':'stopped';
+  const statusLabel=run?'running':starting?s.status:'stopped';
+  return `
+<div class="card ${statusClass}" id="sc-${esc(s.id)}">
+  <div class="card-top">
+    <div>
+      <div class="vpn-name">${esc(s.name)}</div>
+      <div class="vpn-type">${esc(s.desc)}</div>
+    </div>
+    <div class="badge ${statusClass}"><span class="${starting?'spinner':'dot '+statusClass}"></span>${statusLabel}</div>
+  </div>
+  <div class="card-actions" style="align-items:center">
+    ${run
+      ?`<button class="btn btn-stop" onclick="svcAct('${esc(s.id)}','stop')">■ Stop</button>`
+      :`<button class="btn btn-start" onclick="svcAct('${esc(s.id)}','start')"${starting?' disabled':''}>▶ Start</button>`}
+    <label class="tog" title="${s.enabled?'Enabled (autostart)':'Disabled (no autostart)'}">
+      <input type="checkbox" ${s.enabled?'checked':''} onchange="svcToggle('${esc(s.id)}',this.checked)">
+      <span class="tog-sl"></span>
+    </label>
+    <span style="font-size:.78rem;color:var(--dim)">Autostart</span>
+  </div>
+</div>`;
+}
+
+async function loadSvcs(){
+  try{
+    const svcs=await fetch('/api/services').then(r=>r.json());
+    const g=document.getElementById('svc-grid');
+    g.innerHTML=svcs.map(svcCard).join('');
+  }catch(e){document.getElementById('svc-grid').innerHTML='<div class="empty"><h3>Error loading services</h3></div>'}
+}
+
+async function svcAct(id,action){
+  try{
+    const d=await fetch(`/api/service/${id}/${action}`,{method:'POST'}).then(r=>r.json());
+    if(!d.ok)toast(`Error: ${d.error||'unknown'}`,false);
+    else toast(`${id}: ${action==='start'?'starting':'stopping'}`);
+    setTimeout(loadSvcs,600);
+  }catch(e){toast('Connection error',false)}
+}
+
+async function svcToggle(id,enabled){
+  try{
+    const action=enabled?'enable':'disable';
+    const d=await fetch(`/api/service/${id}/${action}`,{method:'POST'}).then(r=>r.json());
+    if(!d.ok)toast(`Error: ${d.error||'unknown'}`,false);
+    else toast(`${id}: ${action}d`);
+    setTimeout(loadSvcs,600);
+  }catch(e){toast('Connection error',false)}
+}
+
+/* ── init ──────────────────────────────────────── */
+load();
+loadSvcs();
+setInterval(load,5000);
+setInterval(loadSvcs,5000);
+</script>
+</body>
+</html>

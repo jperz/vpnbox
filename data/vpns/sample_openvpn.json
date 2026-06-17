@@ -1,0 +1,23 @@
+{
+  "type": "openvpn",
+  "interface_id": 43,
+  "log_file": "../data/logs/openvpn_example.log",
+  "pid_file": "../data/run/openvpn_example.pid",
+  "debug": false,
+
+  "openvpn": {
+    "config_file": "/data/vpns/example.ovpn",
+    "username": "myuser",
+    "password": "mypassword",
+    "additional_args": ""
+  },
+
+  "keepalive": [],
+  "additional_domains": [
+    "example.com",
+    "internal.example.com"
+  ],
+  "manual_routes": [],
+  "up_cmds": [],
+  "down_cmds": []
+}

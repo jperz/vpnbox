@@ -1,0 +1,41 @@
+{
+  "type": "openconnect",
+  "interface_id": 42,
+  "log_file": "../data/logs/xxx.log",
+  "pid_file": "../data/run/xxx.pid",
+  "debug": true,
+
+  "openconnect": {
+    "server": "vpn.xxx.at",
+    "username": "user.name@xxx.at",
+    "password": "myPassW0rd",
+    "protocol": "anyconnect",
+    "config_file": "/etc/openconnect.cfg",
+    "additional_args": ""
+  },
+
+  "keepalive": [
+    {
+      "type": "ping",
+      "target": "gitlab.acl.at",
+      "interval": 120
+    }
+  ],
+  "additional_domains": [
+    "sample.xx"
+  ],
+  "manual_routes": [
+    "172.27.104.113/32",
+    "172.27.104.131/32"
+  ],
+  "up_cmds": [
+    "sudo iptables -I PREROUTING -t nat -i enp1s0 -p tcp --dport 13389 -j DNAT --to-destination 172.27.104.113:3389",
+    "sudo iptables -I PREROUTING -t nat -i enp1s0 -p tcp -d 192.168.10.7 --dport 2229 -j DNAT --to-destination 172.27.104.113:22",
+    "sudo iptables -I POSTROUTING -t nat -o tun42 -j MASQUERADE"
+  ],
+  "down_cmds": [
+    "sudo iptables -D PREROUTING -t nat -i enp1s0 -p tcp --dport 13389 -j DNAT --to-destination 172.27.104.113:3389",
+    "sudo iptables -D PREROUTING -t nat -i enp1s0 -p tcp -d 192.168.10.7 --dport 2229 -j DNAT --to-destination 172.27.104.113:22",
+    "sudo iptables -D POSTROUTING -t nat -o tun42 -j MASQUERADE"
+  ]
+}

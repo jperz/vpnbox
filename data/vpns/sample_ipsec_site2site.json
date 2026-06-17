@@ -1,0 +1,32 @@
+{
+  "type": "ipsec",
+  "interface_id": 51,
+  "log_file": "../data/logs/ipsec_s2s.log",
+  "pid_file": "../data/run/ipsec_s2s.pid",
+  "debug": false,
+
+  "ipsec": {
+    "mode": "site-to-site",
+    "remote_gateway": "gateway.example.com",
+    "auth_type": "psk",
+    "local_id": "%any",
+    "remote_id": "%any",
+    "psk": "sharedsecret",
+    "remote_subnets": [
+      "10.0.0.0/8",
+      "192.168.100.0/24"
+    ],
+    "dns_server": "10.0.0.53"
+  },
+
+  "keepalive": [],
+  "additional_domains": [
+    "example.com"
+  ],
+  "manual_routes": [
+    "10.0.0.0/8",
+    "192.168.100.0/24"
+  ],
+  "up_cmds": [],
+  "down_cmds": []
+}

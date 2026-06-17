@@ -1,0 +1,44 @@
+networks:
+    vpnbox:
+        driver: bridge
+        driver_opts:
+            com.docker.network.bridge.gateway_mode_ipv4: routed
+            com.docker.network.bridge.enable_ip_masquerade: 0
+        name: vpnbox
+        ipam:
+            config:
+                - subnet: 172.31.254.248/30
+                  gateway: 172.31.254.249
+
+    lan:
+        driver: macvlan
+        driver_opts:
+            parent: bond0          # host interface bridged to the LAN
+        ipam:
+            config:
+                - subnet: 192.168.10.0/24
+                  gateway: 192.168.10.1
+
+services:
+    vpnbox:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: vpnbox
+        privileged: true
+        restart: always
+        networks:
+            vpnbox:
+                ipv4_address: 172.31.254.250
+            lan:
+                ipv4_address: 192.168.10.200  # adjust to a free IP on your LAN
+        dns:
+            - 127.0.0.1
+        volumes:
+            - ./data/:/data
+        ports:
+            #- "3100:3100"
+            #- "3128:3128"
+            #- "1080:1080"
+            - "2224:22"
+            #- "53:53/udp"

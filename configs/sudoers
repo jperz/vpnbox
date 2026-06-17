@@ -1,0 +1,4 @@
+Defaults secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/vpnbox/bin"
+
+root    ALL=(ALL:ALL) ALL
+ubuntu  ALL=(ALL:ALL) NOPASSWD: /bin/ip

@@ -1,0 +1,28 @@
+{
+  "type": "ipsec",
+  "interface_id": 50,
+  "log_file": "../data/logs/ipsec_example.log",
+  "pid_file": "../data/run/ipsec_example.pid",
+  "debug": false,
+
+  "ipsec": {
+    "mode": "roadwarrior",
+    "remote_gateway": "vpn.example.com",
+    "auth_type": "eap",
+    "local_id": "user@example.com",
+    "remote_id": "vpn.example.com",
+    "eap_username": "myuser",
+    "eap_password": "mypassword",
+    "virtual_ip": true,
+    "dns_server": ""
+  },
+
+  "keepalive": [],
+  "additional_domains": [
+    "example.com",
+    "internal.example.com"
+  ],
+  "manual_routes": [],
+  "up_cmds": [],
+  "down_cmds": []
+}

@@ -1,0 +1,57 @@
+Port 22
+AddressFamily any
+ListenAddress 0.0.0.0
+
+# ── Authentication ──────────────────────────────────────────────────────────
+PubkeyAuthentication yes
+AuthorizedKeysFile /data/ssh/authorized_keys
+StrictModes no
+
+PasswordAuthentication no
+ChallengeResponseAuthentication no
+KbdInteractiveAuthentication no
+PermitEmptyPasswords no
+UsePAM no
+
+PermitRootLogin no
+
+# Only the tunnel user may connect
+AllowUsers tunnel
+
+# ── Forwarding / tunnelling ─────────────────────────────────────────────────
+AllowTcpForwarding yes
+# "clientspecified" lets the client decide which address to bind on the server
+# for remote forwards (-R); change to "yes" to allow all, "no" to block remote fwds
+GatewayPorts clientspecified
+X11Forwarding no
+AllowAgentForwarding no
+PermitTunnel no
+
+# ── Misc ────────────────────────────────────────────────────────────────────
+PrintMotd no
+PrintLastLog no
+UseDNS no
+
+ClientAliveInterval 30
+ClientAliveCountMax 3
+
+# Host keys are generated at container start (see startup.sh)
+HostKey /etc/ssh/ssh_host_rsa_key
+HostKey /etc/ssh/ssh_host_ecdsa_key
+HostKey /etc/ssh/ssh_host_ed25519_key
+
+SyslogFacility AUTH
+LogLevel INFO
+
+# ── Session hardening ───────────────────────────────────────────────────────
+# Prevent interactive shell / TTY; ForceCommand /bin/false kills exec requests
+# while leaving direct-tcpip (port-forward / ProxyJump) channels untouched.
+# Match blocks must appear last — they extend to EOF or the next Match.
+Match User tunnel
+    PermitTTY no
+    ForceCommand /bin/false
+    AllowTcpForwarding yes
+    GatewayPorts clientspecified
+    PermitOpen any
+    AllowAgentForwarding no
+    X11Forwarding no

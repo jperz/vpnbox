@@ -1,0 +1,11 @@
+*.log
+*.pid
+data/vpns/*.json
+!data/vpns/sample.json
+!data/vpns/sample_ipsec.json
+!data/vpns/sample_ipsec_site2site.json
+!data/vpns/sample_openvpn.json
+data/squid/*.conf
+data/dnsmasq.d/*.conf
+data/bird/vpn*conf
+data/supervisor.d/*.conf
