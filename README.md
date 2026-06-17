@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="web/vpnbox.png" alt="VPNbox" width="140">
+<img src="web/routehouse.png" alt="Routehouse" width="140">
 
-# VPNbox
+# Routehouse
 
 **One box. Every VPN. Shared by the whole team.**
 
@@ -18,22 +18,22 @@ Comes with a simple dashboard - or use CLI.
 
 You probably know the pain: a customer hands you a VPN profile, you connect, and suddenly your whole machine reroutes — Slack drops, your other customer's VPN disconnects, and your DNS starts resolving everything through *their* servers. Connect to a second customer? Good luck if their internal network uses `10.0.0.0/8` too.
 
-**VPNbox solves this by moving all your VPNs into a single, always-on container.** Each tunnel lives in its own routing table with its own DNS. They run side by side, permanently, and your team reaches each one through a shared proxy — picking the right tunnel automatically based on the destination address or domain.
+**Routehouse solves this by moving all your VPNs into a single, always-on container.** Each tunnel lives in its own routing table with its own DNS. They run side by side, permanently, and your team reaches each one through a shared proxy — picking the right tunnel automatically based on the destination address or domain.
 
 Think of it as a **VPN switchboard for your team**: dial any internal host on any customer network, from any machine on the LAN, without ever installing or toggling a VPN client again.
 
 ---
 
-## Why VPNbox?
+## Why Routehouse?
 
 ### 🔀 Run many VPNs at the same time
-Most VPN clients are jealous — they grab the default route and tear down everything else. VPNbox gives **every VPN its own network interface and its own Linux routing table**. Ten tunnels can be up simultaneously and none of them interfere with the others (or with your normal traffic).
+Most VPN clients are jealous — they grab the default route and tear down everything else. Routehouse gives **every VPN its own network interface and its own Linux routing table**. Ten tunnels can be up simultaneously and none of them interfere with the others (or with your normal traffic).
 
 ### 🧩 Handle overlapping IP ranges
-Customer A uses `10.0.0.0/8`. So does Customer B. A normal host can't route to both. VPNbox uses **policy-based routing** (`ip rule` + per-tunnel tables): traffic is steered into the correct tunnel based on the **specific destination route** you assign to each VPN — and for DNS-based services, by the **domain** being resolved. Overlap stops being a deal-breaker.
+Customer A uses `10.0.0.0/8`. So does Customer B. A normal host can't route to both. Routehouse uses **policy-based routing** (`ip rule` + per-tunnel tables): traffic is steered into the correct tunnel based on the **specific destination route** you assign to each VPN — and for DNS-based services, by the **domain** being resolved. Overlap stops being a deal-breaker.
 
 ### 👥 Share VPN access across the whole team
-Connect once, on the box — then **everyone on the LAN uses it**. VPNbox publishes three front doors:
+Connect once, on the box — then **everyone on the LAN uses it**. Routehouse publishes three front doors:
 - **HTTP/HTTPS proxy** (Squid, port `3128`)
 - **SOCKS5** (Dante, port `1080`)
 - **SSH jump host** (key-only tunnel user, port `22`)
@@ -41,7 +41,7 @@ Connect once, on the box — then **everyone on the LAN uses it**. VPNbox publis
 No more "can you reconnect, I need to reach the test server" in the team chat. No per-seat VPN licenses. One connection, shared.
 
 ### 🔒 Security by least-route — and no DNS leaks
-VPNbox is built so a tunnel **only carries the traffic it should**:
+Routehouse is built so a tunnel **only carries the traffic it should**:
 - **Route only what you need.** Each VPN gets an explicit allow-list of destination subnets/hosts. Nothing else is ever sent into a customer's network — and a customer's tunnel never becomes a path to the open internet.
 - **No DNS bleeding.** DNS queries for a VPN's internal domains (e.g. `*.customer.intern`) are sent **only** to that VPN's DNS servers — and the answers don't escape to anyone else. All other lookups go to your normal resolver. A customer's DNS server never sees your unrelated queries, and your queries never leak into their infrastructure.
 - **Resolve-then-route.** For services known only by hostname, dnsmasq adds each resolved IP to an `nftables` set on the fly, so even dynamically-discovered hosts are routed through the right tunnel — and nowhere else.
@@ -66,7 +66,7 @@ VPNbox is built so a tunnel **only carries the traffic it should**:
 
 ## Supported protocols
 
-VPNbox drives three best-in-class open-source VPN engines, giving you broad gateway coverage from a single appliance.
+Routehouse drives three best-in-class open-source VPN engines, giving you broad gateway coverage from a single appliance.
 
 ### SSL/TLS VPNs — via OpenConnect
 Set `openconnect.protocol` to match your gateway. OpenConnect speaks every major proprietary SSL-VPN protocol:
@@ -91,7 +91,7 @@ The full OpenVPN protocol over **UDP or TCP**, configured from a standard `.ovpn
 | **IKEv1 road-warrior** | **XAuth + PSK**, aggressive mode | Classic Cisco IOS / ASA "group VPN" |
 | **Site-to-site** | PSK or certificate | Connect whole subnets (`remote_subnets`) router-to-router |
 
-> Cisco's Unity extension (split-include routes pushed by the gateway) is supported for IKEv1 PSK+XAuth — VPNbox enables `charon.cisco_unity` so those routes are honoured automatically.
+> Cisco's Unity extension (split-include routes pushed by the gateway) is supported for IKEv1 PSK+XAuth — Routehouse enables `charon.cisco_unity` so those routes are honoured automatically.
 
 ---
 
@@ -102,7 +102,7 @@ The full OpenVPN protocol over **UDP or TCP**, configured from a standard `.ovpn
             HTTP :3128 │ SOCKS5 :1080 │ SSH :22 │ Web :3100
                        ▼
         ┌───────────────────────────────────────────────┐
-        │                  VPNbox container             │
+        │                  Routehouse container         │
         │                                               │
         │   Squid / Dante / sshd  ──┐                   │
         │                           │ policy routing    │
@@ -125,7 +125,7 @@ Two mechanisms do most of the heavy lifting and are worth understanding.
 
 ### 🪄 DNS lookups that build their own routes
 
-Internal services usually live behind a *hostname*, not a fixed IP — and that IP can change without notice. Instead of making you chase IPs, VPNbox turns **every DNS lookup into a routing decision**. List a VPN's internal domains under `additional_domains` and this chain kicks in:
+Internal services usually live behind a *hostname*, not a fixed IP — and that IP can change without notice. Instead of making you chase IPs, Routehouse turns **every DNS lookup into a routing decision**. List a VPN's internal domains under `additional_domains` and this chain kicks in:
 
 1. **Split DNS.** dnsmasq forwards queries for those domains **only** to that VPN's own DNS servers (and nothing else leaks to them — see [security](#-security-by-least-route--and-no-dns-leaks)).
 2. **Resolve → set.** The instant a name resolves, dnsmasq writes the answer — the exact **`/32` host address** — into a per-VPN `nftables` set (via its `nftset=` directive).
@@ -137,9 +137,9 @@ This is what lets you point `manual_routes` at just the handful of subnets you t
 
 ### 📡 Re-announcing VPN routes to your LAN (BIRD → RIPv2)
 
-Reaching a tunnel through the box's proxies is perfect for clients — but sometimes you want other **routers** on your network to know natively that *"the path to `10.50.0.0/16` runs through VPNbox"*, so any device can reach those subnets without configuring a proxy at all.
+Reaching a tunnel through the box's proxies is perfect for clients — but sometimes you want other **routers** on your network to know natively that *"the path to `10.50.0.0/16` runs through Routehouse"*, so any device can reach those subnets without configuring a proxy at all.
 
-For that, VPNbox runs the [BIRD](https://bird.network.cz/) routing daemon. Any prefix you list under a VPN's `exported_routes`:
+For that, Routehouse runs the [BIRD](https://bird.network.cz/) routing daemon. Any prefix you list under a VPN's `exported_routes`:
 
 1. is injected into BIRD as a static route when the VPN connects, and
 2. is **advertised over RIPv2** to the rest of your network.
@@ -152,13 +152,13 @@ Your L3 switch / core router learns the prefix dynamically and starts forwarding
 
 ### Requirements
 - A Linux host with Docker + Docker Compose
-- The host running in a **privileged** container with `NET_ADMIN` (VPNbox creates interfaces and manipulates routing/nftables — hence `privileged: true` in the compose file)
+- The host running in a **privileged** container with `NET_ADMIN` (Routehouse creates interfaces and manipulates routing/nftables — hence `privileged: true` in the compose file)
 
 ### 1. Clone and build
 
 ```bash
-git clone https://github.com/jperz/vpnbox.git
-cd vpnbox
+git clone https://github.com/jperz/routehouse.git
+cd routehouse
 ```
 
 ### 2. Configure networking
@@ -176,7 +176,7 @@ lan:
         gateway: 192.168.10.1
 ```
 
-Set a free LAN address for the container under `services.vpnbox.networks.lan.ipv4_address`.
+Set a free LAN address for the container under `services.routehouse.networks.lan.ipv4_address`.
 
 ### 3. Add SSH keys for the tunnel user
 
@@ -315,9 +315,9 @@ Start/stop each VPN, see live status and type, edit configs inline, tail per-VPN
 
 ### Command line (inside the container)
 ```bash
-docker exec -it vpnbox vpn.sh status          # list all VPNs + state
-docker exec -it vpnbox vpn.sh start acme       # bring up data/vpns/acme.json
-docker exec -it vpnbox vpn.sh stop  acme       # tear it down + clean up
+docker exec -it routehouse vpn.sh status          # list all VPNs + state
+docker exec -it routehouse vpn.sh start acme       # bring up data/vpns/acme.json
+docker exec -it routehouse vpn.sh stop  acme       # tear it down + clean up
 ```
 
 ### Reaching internal hosts from your machines
@@ -339,7 +339,7 @@ ssh -J tunnel@<box-ip>:22 admin@10.0.0.5
 ssh -N -L 5901:vnc.acme.intern:5901 tunnel@<box-ip>
 ```
 
-In every case VPNbox decides — by destination IP or domain — which tunnel the traffic belongs to, and sends it there and only there.
+In every case Routehouse decides — by destination IP or domain — which tunnel the traffic belongs to, and sends it there and only there.
 
 ---
 

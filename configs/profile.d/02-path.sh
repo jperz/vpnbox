@@ -1,1 +1,1 @@
-export PATH="$PATH:/usr/local/vpnbox/bin"
+export PATH="$PATH:/usr/local/routehouse/bin"

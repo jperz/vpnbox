@@ -11,7 +11,7 @@ RUN apt update \
     strongswan-swanctl charon-systemd libcharon-extra-plugins libcharon-extauth-plugins
 
 RUN mkdir /data \
-  && mkdir -p /usr/local/vpnbox/bin \
+  && mkdir -p /usr/local/routehouse/bin \
   && mkdir -p /var/run/bird \
   && chown bird.bird /var/run/bird \
   && mkdir -p /run/sshd \
@@ -25,12 +25,12 @@ RUN useradd -r -m -d /home/tunnel -s /bin/false -c "SSH Tunnel User" tunnel \
   && chown -R tunnel:tunnel /home/tunnel
 
 COPY ./configs/ /etc/
-COPY ./bin/ /usr/local/vpnbox/bin/
-COPY ./web/ /usr/local/vpnbox/web/
-RUN chmod +x /usr/local/vpnbox/bin/*.sh
+COPY ./bin/ /usr/local/routehouse/bin/
+COPY ./web/ /usr/local/routehouse/web/
+RUN chmod +x /usr/local/routehouse/bin/*.sh
 
 WORKDIR /data
 
 EXPOSE 3100 3128 1080 22 53
 
-CMD ["/usr/local/vpnbox/bin/startup.sh"]
+CMD ["/usr/local/routehouse/bin/startup.sh"]

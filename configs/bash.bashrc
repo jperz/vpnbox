@@ -70,4 +70,4 @@ if [ -x /usr/lib/command-not-found -o -x /usr/share/command-not-found/command-no
 	}
 fi
 
-export PATH="$PATH:/usr/local/vpnbox/bin"
+export PATH="$PATH:/usr/local/routehouse/bin"

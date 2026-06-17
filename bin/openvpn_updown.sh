@@ -113,17 +113,17 @@ do_up() {
       while read -r domain; do
         [ -n "$domain" ] || continue
         echo "server=/${domain}/${first_dns}"
-        echo "nftset=/${domain}/4#ip#vpnbox_${VPN_INTERFACE_ID}#auto_routes"
+        echo "nftset=/${domain}/4#ip#routehouse_${VPN_INTERFACE_ID}#auto_routes"
       done <<< "$all_domains"
     } > "$conf_file"
 
     # nftables table for auto-routing DNS-resolved IPs (same pattern as vpnc-script)
-    nft "add table ip vpnbox_${VPN_INTERFACE_ID}" 2>/dev/null || true
-    nft "add set ip vpnbox_${VPN_INTERFACE_ID} auto_routes { type ipv4_addr ; flags dynamic ; }" 2>/dev/null || true
-    nft "add chain ip vpnbox_${VPN_INTERFACE_ID} out { type route hook output priority mangle ; }" 2>/dev/null || true
-    nft "add rule ip vpnbox_${VPN_INTERFACE_ID} out ip daddr @auto_routes meta mark set ${VPN_INTERFACE_ID}" 2>/dev/null || true
-    nft "add chain ip vpnbox_${VPN_INTERFACE_ID} pre { type filter hook prerouting priority mangle ; }" 2>/dev/null || true
-    nft "add rule ip vpnbox_${VPN_INTERFACE_ID} pre ip daddr @auto_routes meta mark set ${VPN_INTERFACE_ID}" 2>/dev/null || true
+    nft "add table ip routehouse_${VPN_INTERFACE_ID}" 2>/dev/null || true
+    nft "add set ip routehouse_${VPN_INTERFACE_ID} auto_routes { type ipv4_addr ; flags dynamic ; }" 2>/dev/null || true
+    nft "add chain ip routehouse_${VPN_INTERFACE_ID} out { type route hook output priority mangle ; }" 2>/dev/null || true
+    nft "add rule ip routehouse_${VPN_INTERFACE_ID} out ip daddr @auto_routes meta mark set ${VPN_INTERFACE_ID}" 2>/dev/null || true
+    nft "add chain ip routehouse_${VPN_INTERFACE_ID} pre { type filter hook prerouting priority mangle ; }" 2>/dev/null || true
+    nft "add rule ip routehouse_${VPN_INTERFACE_ID} pre ip daddr @auto_routes meta mark set ${VPN_INTERFACE_ID}" 2>/dev/null || true
 
     $IPROUTE rule add fwmark "$VPN_INTERFACE_ID" lookup "$VPN_INTERFACE_ID" priority 200 2>/dev/null || true
     $IPROUTE route flush cache 2>/dev/null || true
@@ -136,7 +136,7 @@ do_up() {
 
 do_down() {
   rm -f "${DNSMASQ_DIR}/vpn${VPN_INTERFACE_ID}-"*.conf 2>/dev/null || true
-  nft delete table ip "vpnbox_${VPN_INTERFACE_ID}" 2>/dev/null || true
+  nft delete table ip "routehouse_${VPN_INTERFACE_ID}" 2>/dev/null || true
   $IPROUTE rule del fwmark "$VPN_INTERFACE_ID" lookup "$VPN_INTERFACE_ID" 2>/dev/null || true
   $IPROUTE route flush cache 2>/dev/null || true
   supervisorctl restart dnsmasq 2>/dev/null || pkill -TERM -x dnsmasq 2>/dev/null || true

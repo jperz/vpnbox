@@ -1,10 +1,10 @@
 networks:
-    vpnbox:                        # separated network for vpnbox container, recommended
+    routehouse:                        # separated network for routehouse container, recommended
         driver: bridge
         driver_opts:
             com.docker.network.bridge.gateway_mode_ipv4: routed
             com.docker.network.bridge.enable_ip_masquerade: 0
-        name: vpnbox
+        name: routehouse
         ipam:
             config:
                 - subnet: 172.31.254.248/30
@@ -20,25 +20,25 @@ networks:
                   gateway: 192.168.10.1
 
 services:
-    vpnbox:
+    routehouse:
         build:
             context: .
             dockerfile: Dockerfile
-        container_name: vpnbox
+        container_name: routehouse
         privileged: true
         restart: always
         networks:
-            vpnbox:
+            routehouse:
                 ipv4_address: 172.31.254.250
             lan:
                 ipv4_address: 192.168.10.200  # adjust to a free IP on your LAN
         dns:
             - 127.0.0.1
         volumes:
-            - ./data/:/data                   # where vpnbox data (configs, logs, etc.) live
+            - ./data/:/data                   # where routehouse data (configs, logs, etc.) live
         ports:
             #- "3100:3100"                    # web ui
-            #- "3128:3128"                    # squid proxy
+            - "3128:3128"                    # squid proxy
             #- "1080:1080"                    # socks proxy
-            #- "22:22"                        # ssh tunnels
+            #-  "22:22"                        # ssh tunnels
             #- "53:53/udp"                    # dns server

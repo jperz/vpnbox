@@ -2,7 +2,7 @@
 # Called by strongSwan (charon) when an IPsec child SA comes up or goes down.
 # Mirrors the role of configs/vpnc-script for openconnect connections.
 #
-# Required env vars set by the per-VPN updown wrapper (/tmp/vpnbox_updown_<name>.sh):
+# Required env vars set by the per-VPN updown wrapper (/tmp/routehouse_updown_<name>.sh):
 #   VPNNAME           -- VPN name (matches the swanctl connection name)
 #   VPN_IF            -- XFRM interface name, e.g. xfrm50
 #   VPN_INTERFACE_ID  -- numeric ID, used as routing table number
@@ -84,17 +84,17 @@ do_connect() {
       while read -r domain; do
         [ -n "$domain" ] || continue
         echo "server=/${domain}/${dns_ip}"
-        echo "nftset=/${domain}/4#ip#vpnbox_${VPN_INTERFACE_ID}#auto_routes"
+        echo "nftset=/${domain}/4#ip#routehouse_${VPN_INTERFACE_ID}#auto_routes"
       done <<< "$domains"
     } > "$conf_file"
 
     # nftables table for auto-routing DNS-resolved IPs (same pattern as vpnc-script)
-    nft "add table ip vpnbox_${VPN_INTERFACE_ID}" 2>/dev/null || true
-    nft "add set ip vpnbox_${VPN_INTERFACE_ID} auto_routes { type ipv4_addr ; flags dynamic ; }" 2>/dev/null || true
-    nft "add chain ip vpnbox_${VPN_INTERFACE_ID} out { type route hook output priority mangle ; }" 2>/dev/null || true
-    nft "add rule ip vpnbox_${VPN_INTERFACE_ID} out ip daddr @auto_routes meta mark set ${VPN_INTERFACE_ID}" 2>/dev/null || true
-    nft "add chain ip vpnbox_${VPN_INTERFACE_ID} pre { type filter hook prerouting priority mangle ; }" 2>/dev/null || true
-    nft "add rule ip vpnbox_${VPN_INTERFACE_ID} pre ip daddr @auto_routes meta mark set ${VPN_INTERFACE_ID}" 2>/dev/null || true
+    nft "add table ip routehouse_${VPN_INTERFACE_ID}" 2>/dev/null || true
+    nft "add set ip routehouse_${VPN_INTERFACE_ID} auto_routes { type ipv4_addr ; flags dynamic ; }" 2>/dev/null || true
+    nft "add chain ip routehouse_${VPN_INTERFACE_ID} out { type route hook output priority mangle ; }" 2>/dev/null || true
+    nft "add rule ip routehouse_${VPN_INTERFACE_ID} out ip daddr @auto_routes meta mark set ${VPN_INTERFACE_ID}" 2>/dev/null || true
+    nft "add chain ip routehouse_${VPN_INTERFACE_ID} pre { type filter hook prerouting priority mangle ; }" 2>/dev/null || true
+    nft "add rule ip routehouse_${VPN_INTERFACE_ID} pre ip daddr @auto_routes meta mark set ${VPN_INTERFACE_ID}" 2>/dev/null || true
 
     $IPROUTE rule add fwmark "$VPN_INTERFACE_ID" lookup "$VPN_INTERFACE_ID" priority 200 2>/dev/null || true
     $IPROUTE route flush cache 2>/dev/null || true
@@ -134,7 +134,7 @@ do_disconnect() {
     $IPROUTE rule del fwmark "$VPN_INTERFACE_ID" lookup "$VPN_INTERFACE_ID" 2>/dev/null || true
   fi
 
-  nft delete table ip "vpnbox_${VPN_INTERFACE_ID}" 2>/dev/null || true
+  nft delete table ip "routehouse_${VPN_INTERFACE_ID}" 2>/dev/null || true
   rm -f "${DNSMASQ_DIR}/vpn${VPN_INTERFACE_ID}-"*.conf 2>/dev/null || true
   pkill -HUP -x dnsmasq 2>/dev/null || true
   pkill -HUP -x squid   2>/dev/null || true

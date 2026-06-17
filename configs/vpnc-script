@@ -39,7 +39,7 @@ RESOLV_CONF_BACKUP=/var/run/vpnc/resolv.conf-backup
 SCRIPTNAME=`basename $0`
 
 
-# vpnbox - load vpn variables
+# routehouse - load vpn variables
 #VPNCFGFILE=`grep -l "X_VPN_INTERFACE=${TUNDEV:3}" /data/vpns/*.cfg`
 #. $VPNCFGFILE
 
@@ -336,7 +336,7 @@ modify_resolvconf_generic() {
   # without needing any external daemon or log-watching.
   # One nftset= line per domain (same reason as server= above).
   for x in $VPNDOMAINS; do
-    DNSCFG="${DNSCFG}nftset=/${x}/4#ip#vpnbox_${VPNID}#auto_routes\n"
+    DNSCFG="${DNSCFG}nftset=/${x}/4#ip#routehouse_${VPNID}#auto_routes\n"
   done
 
 	echo -e $DNSCFG > $DNSMASQ_CFG_FILE
@@ -489,14 +489,14 @@ do_connect() {
 		# Create the nftables table that the nftset= dnsmasq directive will
 		# populate, and steer marked traffic through the VPN's routing table.
 		VPNID=${TUNDEV:3}
-		nft "add table ip vpnbox_${VPNID}" 2>/dev/null || true
-		nft "add set ip vpnbox_${VPNID} auto_routes { type ipv4_addr ; flags dynamic ; }" 2>/dev/null || true
+		nft "add table ip routehouse_${VPNID}" 2>/dev/null || true
+		nft "add set ip routehouse_${VPNID} auto_routes { type ipv4_addr ; flags dynamic ; }" 2>/dev/null || true
 		# OUTPUT: mark packets originating from this box to nftset IPs
-		nft "add chain ip vpnbox_${VPNID} out { type route hook output priority mangle ; }" 2>/dev/null || true
-		nft "add rule ip vpnbox_${VPNID} out ip daddr @auto_routes meta mark set ${VPNID}" 2>/dev/null || true
+		nft "add chain ip routehouse_${VPNID} out { type route hook output priority mangle ; }" 2>/dev/null || true
+		nft "add rule ip routehouse_${VPNID} out ip daddr @auto_routes meta mark set ${VPNID}" 2>/dev/null || true
 		# PREROUTING: mark forwarded packets before the routing decision
-		nft "add chain ip vpnbox_${VPNID} pre { type filter hook prerouting priority mangle ; }" 2>/dev/null || true
-		nft "add rule ip vpnbox_${VPNID} pre ip daddr @auto_routes meta mark set ${VPNID}" 2>/dev/null || true
+		nft "add chain ip routehouse_${VPNID} pre { type filter hook prerouting priority mangle ; }" 2>/dev/null || true
+		nft "add rule ip routehouse_${VPNID} pre ip daddr @auto_routes meta mark set ${VPNID}" 2>/dev/null || true
 
 		# Policy rule: fwmark N → VPN routing table N.
 		# Higher priority (lower number) than the default dest-based rules so
@@ -616,7 +616,7 @@ do_disconnect() {
 	fi
 
 	# Tear down nftables table (removes auto_routes set + mark chains in one shot)
-	nft delete table ip "vpnbox_${VPNID}" 2>/dev/null || true
+	nft delete table ip "routehouse_${VPNID}" 2>/dev/null || true
 
 	# Remove dnsmasq config for this VPN interface
 	rm -f /data/dnsmasq.d/vpn${VPNID}-*.conf

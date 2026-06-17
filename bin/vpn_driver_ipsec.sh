@@ -28,7 +28,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]] && [ "${1:-}" = "_monitor" ]; then
     swanctl --terminate --ike "$_mon_name" 2>/dev/null || true
     swanctl --unload-conns --conn "$_mon_name" 2>/dev/null || true
     ip link del "$_mon_if" 2>/dev/null || true
-    rm -f "/tmp/vpnbox_updown_${_mon_name}.sh" "/tmp/vpnbox_swanctl_${_mon_name}.conf"
+    rm -f "/tmp/routehouse_updown_${_mon_name}.sh" "/tmp/routehouse_swanctl_${_mon_name}.conf"
     rm -f "$_mon_pidfile"
     exit 0
   }
@@ -186,7 +186,7 @@ ${remote_block}
 ${esp_proposals_line}
         if_id_out = ${vpn_interface_id}
         if_id_in = ${vpn_interface_id}
-        updown = /tmp/vpnbox_updown_${VPNNAME}.sh
+        updown = /tmp/routehouse_updown_${VPNNAME}.sh
         start_action = none
         close_action = none
         dpd_action = clear
@@ -238,17 +238,17 @@ EOF
 }
 
 _ipsec_create_updown_wrapper() {
-  cat > "/tmp/vpnbox_updown_${VPNNAME}.sh" <<EOF
+  cat > "/tmp/routehouse_updown_${VPNNAME}.sh" <<EOF
 #!/bin/bash
-# Per-VPN updown wrapper — sets vpnbox context for ipsec_updown.sh
+# Per-VPN updown wrapper — sets routehouse context for ipsec_updown.sh
 export VPNNAME="${VPNNAME}"
 export VPN_IF="${VPN_IF}"
 export VPN_INTERFACE_ID="${vpn_interface_id}"
 export VPN_CONFIG_FILE="${VPN_CONFIG_FILE}"
 export DNSMASQ_DIR="${DNSMASQ_DIR}"
-exec /usr/local/vpnbox/bin/ipsec_updown.sh "\$@"
+exec /usr/local/routehouse/bin/ipsec_updown.sh "\$@"
 EOF
-  chmod +x "/tmp/vpnbox_updown_${VPNNAME}.sh"
+  chmod +x "/tmp/routehouse_updown_${VPNNAME}.sh"
 }
 
 driver_connect() {
@@ -275,7 +275,7 @@ driver_connect() {
 
   _ipsec_create_updown_wrapper
 
-  local conf_file="/tmp/vpnbox_swanctl_${VPNNAME}.conf"
+  local conf_file="/tmp/routehouse_swanctl_${VPNNAME}.conf"
   _ipsec_generate_swanctl_conf > "$conf_file"
 
   if [ "$vpn_debug" = "true" ]; then
@@ -319,5 +319,5 @@ driver_disconnect() {
   swanctl --terminate --ike "$VPNNAME" >> "$vpn_log_file" 2>&1 || true
   swanctl --unload-conns --conn "$VPNNAME" 2>/dev/null || true
   ip link del "$VPN_IF" 2>/dev/null || true
-  rm -f "/tmp/vpnbox_updown_${VPNNAME}.sh"
+  rm -f "/tmp/routehouse_updown_${VPNNAME}.sh"
 }

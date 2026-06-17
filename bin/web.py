@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""VPNbox Web UI — lightweight stdlib-only HTTP server."""
+"""Routehouse Web UI — lightweight stdlib-only HTTP server."""
 
 import json
 import os
@@ -9,11 +9,11 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse
 
-VPN_BIN = "/usr/local/vpnbox/bin/vpn.sh"
+VPN_BIN = "/usr/local/routehouse/bin/vpn.sh"
 VPN_DIR = Path("/data/vpns")
 RUN_DIR = Path("/data/run")
 LOG_DIR = Path("/data/logs")
-WEB_DIR = Path("/usr/local/vpnbox/web")
+WEB_DIR = Path("/usr/local/routehouse/web")
 PORT = 3100
 
 SERVICES = [
@@ -328,5 +328,5 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     server = HTTPServer(("0.0.0.0", PORT), Handler)
-    print(f"VPNbox Web UI  →  http://0.0.0.0:{PORT}", flush=True)
+    print(f"Routehouse Web UI  →  http://0.0.0.0:{PORT}", flush=True)
     server.serve_forever()

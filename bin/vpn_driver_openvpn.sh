@@ -26,7 +26,7 @@ driver_connect() {
   # Removed by driver_disconnect or when the watchdog cleans up.
   local auth_arg=""
   if [ -n "$username" ]; then
-    local creds_file="/tmp/vpnbox_openvpn_creds_${VPNNAME}.txt"
+    local creds_file="/tmp/routehouse_openvpn_creds_${VPNNAME}.txt"
     printf '%s\n%s\n' "$username" "$password" > "$creds_file"
     chmod 600 "$creds_file"
     auth_arg="--auth-user-pass $creds_file"
@@ -51,8 +51,8 @@ driver_connect() {
     --log-append "$vpn_log_file" \
     --script-security 2 \
     --route-noexec \
-    --up   /usr/local/vpnbox/bin/openvpn_updown.sh \
-    --down /usr/local/vpnbox/bin/openvpn_updown.sh \
+    --up   /usr/local/routehouse/bin/openvpn_updown.sh \
+    --down /usr/local/routehouse/bin/openvpn_updown.sh \
     --up-restart \
     --setenv VPNNAME          "$VPNNAME" \
     --setenv VPN_INTERFACE_ID "$vpn_interface_id" \
@@ -63,5 +63,5 @@ driver_connect() {
 }
 
 driver_disconnect() {
-  rm -f "/tmp/vpnbox_openvpn_creds_${VPNNAME}.txt"
+  rm -f "/tmp/routehouse_openvpn_creds_${VPNNAME}.txt"
 }
