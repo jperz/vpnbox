@@ -9,3 +9,4 @@ data/squid/*.conf
 data/dnsmasq.d/*.conf
 data/bird/vpn*conf
 data/supervisor.d/*.conf
+docker-compose.override.yml

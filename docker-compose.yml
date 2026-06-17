@@ -1,5 +1,5 @@
 networks:
-    vpnbox:
+    vpnbox:                        # separated network for vpnbox container, recommended
         driver: bridge
         driver_opts:
             com.docker.network.bridge.gateway_mode_ipv4: routed
@@ -10,7 +10,7 @@ networks:
                 - subnet: 172.31.254.248/30
                   gateway: 172.31.254.249
 
-    lan:
+    lan:                           # interface bridged to your LAN, useful if you need RIPv2 routing
         driver: macvlan
         driver_opts:
             parent: bond0          # host interface bridged to the LAN
@@ -35,10 +35,10 @@ services:
         dns:
             - 127.0.0.1
         volumes:
-            - ./data/:/data
+            - ./data/:/data                   # where vpnbox data (configs, logs, etc.) live
         ports:
-            #- "3100:3100"
-            #- "3128:3128"
-            #- "1080:1080"
-            - "2224:22"
-            #- "53:53/udp"
+            #- "3100:3100"                    # web ui
+            #- "3128:3128"                    # squid proxy
+            #- "1080:1080"                    # socks proxy
+            #- "22:22"                        # ssh tunnels
+            #- "53:53/udp"                    # dns server

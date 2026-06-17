@@ -6,7 +6,9 @@
 
 **One box. Every VPN. Shared by the whole team.**
 
-A self-hosted Docker appliance that connects to **many VPNs at once** — OpenConnect, OpenVPN and IPsec/IKEv2 — and exposes them to your entire LAN through a proxy, a SOCKS5 endpoint and SSH jump tunnels. No VPN client on anyone's laptop. No fighting over which tunnel is "currently connected".
+A self-hosted Docker appliance that connects to **many VPNs at once** — Cisco AnyConnect, OpenConnect, OpenVPN and IPsec/IKEv2 — and exposes them to your entire LAN through a proxy, a SOCKS5 endpoint and SSH jump tunnels. No VPN client on anyone's laptop. No fighting over which tunnel is "currently connected".
+
+Comes with a simple dashboard - or use CLI.
 
 </div>
 
@@ -50,15 +52,46 @@ VPNbox is built so a tunnel **only carries the traffic it should**:
 
 | | |
 |---|---|
-| **Protocols** | OpenConnect (AnyConnect/Cisco/Juniper), OpenVPN, IPsec/IKEv2 & IKEv1 (EAP, PSK, XAuth-PSK, site-to-site) |
+| **Protocols** | OpenConnect (AnyConnect, GlobalProtect, Pulse/Juniper, FortiGate, F5, Array), OpenVPN, IPsec/IKEv2 & IKEv1 — [full list ↓](#supported-protocols) |
 | **Per-VPN isolation** | Dedicated interface + routing table + DNS scope for every tunnel |
 | **Client access** | Squid HTTP proxy · Dante SOCKS5 · SSH jump host |
 | **Split DNS** | Per-domain forwarding to each VPN's resolver, leak-free |
-| **Auto-routing** | `nftset`-driven routing for hostname-only services |
-| **Route export** | Announce reachable subnets to your network via BIRD / RIPv2 |
+| **Auto-routing** | DNS lookups auto-add `/32` routes for hostname-only services — [how ↓](#-dns-lookups-that-build-their-own-routes) |
+| **Route export** | Advertise reachable subnets to your LAN via BIRD / RIPv2 — [how ↓](#-re-announcing-vpn-routes-to-your-lan-bird--ripv2) |
 | **Health** | Per-VPN keepalive + watchdog with automatic cleanup |
 | **Web dashboard** | Start/stop tunnels, edit configs, toggle services, tail logs |
 | **Config as data** | Each VPN is a single declarative JSON file |
+
+---
+
+## Supported protocols
+
+VPNbox drives three best-in-class open-source VPN engines, giving you broad gateway coverage from a single appliance.
+
+### SSL/TLS VPNs — via OpenConnect
+Set `openconnect.protocol` to match your gateway. OpenConnect speaks every major proprietary SSL-VPN protocol:
+
+| `protocol` | Gateway |
+|---|---|
+| `anyconnect` | Cisco AnyConnect (ASA / Firepower) |
+| `gp` | Palo Alto Networks GlobalProtect |
+| `nc` | Juniper Network Connect |
+| `pulse` | Juniper / Pulse Connect Secure (Ivanti) |
+| `fortinet` | Fortinet FortiGate SSL VPN |
+| `f5` | F5 BIG-IP Edge / APM |
+| `array` | Array Networks SSL VPN |
+
+### OpenVPN
+The full OpenVPN protocol over **UDP or TCP**, configured from a standard `.ovpn` profile. All common authentication modes are supported: TLS/PKI certificates, static keys, `tls-auth`/`tls-crypt`, and username + password (`auth-user-pass`) — including 2FA/OTP appended to the password.
+
+### IPsec — via strongSwan
+| Mode | Auth | Typical use |
+|---|---|---|
+| **IKEv2 road-warrior** | EAP (user/pass), PSK, or certificate | Modern strongSwan / RouterOS / Windows-style gateways |
+| **IKEv1 road-warrior** | **XAuth + PSK**, aggressive mode | Classic Cisco IOS / ASA "group VPN" |
+| **Site-to-site** | PSK or certificate | Connect whole subnets (`remote_subnets`) router-to-router |
+
+> Cisco's Unity extension (split-include routes pushed by the gateway) is supported for IKEv1 PSK+XAuth — VPNbox enables `charon.cisco_unity` so those routes are honoured automatically.
 
 ---
 
@@ -68,21 +101,50 @@ VPNbox is built so a tunnel **only carries the traffic it should**:
                 LAN clients (browsers, ssh, apps)
             HTTP :3128 │ SOCKS5 :1080 │ SSH :22 │ Web :3100
                        ▼
-        ┌─────────────────────────────────────────────┐
+        ┌───────────────────────────────────────────────┐
         │                  VPNbox container             │
         │                                               │
         │   Squid / Dante / sshd  ──┐                   │
         │                           │ policy routing    │
         │   dnsmasq (split DNS) ────┤ (ip rule + tables)│
         │                           ▼                   │
-        │   tun42 ── Customer A   xfrm50 ── Customer B   │
-        │   tun43 ── Customer C   ...                    │
+        │   tun42 ── Customer A   xfrm50 ── Customer B  │
+        │   tun43 ── Customer C   ...                   │
         └────┼────────────┼───────────────┼─────────────┘
              ▼            ▼               ▼
         VPN gateway   VPN gateway     VPN gateway
 ```
 
 Every connected VPN gets interface `tunNN` / `xfrmNN` and routing table `NN` (where `NN` is the config's `interface_id`). Policy rules direct matching destination traffic into the matching table; dnsmasq forwards matching domains to the matching tunnel's DNS. Squid, Dante and sshd sit in front and let the whole LAN ride along.
+
+---
+
+## Under the hood
+
+Two mechanisms do most of the heavy lifting and are worth understanding.
+
+### 🪄 DNS lookups that build their own routes
+
+Internal services usually live behind a *hostname*, not a fixed IP — and that IP can change without notice. Instead of making you chase IPs, VPNbox turns **every DNS lookup into a routing decision**. List a VPN's internal domains under `additional_domains` and this chain kicks in:
+
+1. **Split DNS.** dnsmasq forwards queries for those domains **only** to that VPN's own DNS servers (and nothing else leaks to them — see [security](#-security-by-least-route--and-no-dns-leaks)).
+2. **Resolve → set.** The instant a name resolves, dnsmasq writes the answer — the exact **`/32` host address** — into a per-VPN `nftables` set (via its `nftset=` directive).
+3. **Set → route.** A kernel `fwmark` rule matches any packet whose destination is in that set and steers it into the VPN's routing table.
+
+So when someone asks for `wiki.acme.intern`, the name is resolved through the correct tunnel **and** the resolved host is routed through it — automatically, the moment it's looked up. No daemon tailing logs, no manually maintained route list. If the host's IP changes, the next lookup re-points the route for free. Addresses that *aren't* reachable inside the VPN simply fall through to the normal table, so nothing breaks.
+
+This is what lets you point `manual_routes` at just the handful of subnets you truly need, and let everything discovered-by-name route itself on demand.
+
+### 📡 Re-announcing VPN routes to your LAN (BIRD → RIPv2)
+
+Reaching a tunnel through the box's proxies is perfect for clients — but sometimes you want other **routers** on your network to know natively that *"the path to `10.50.0.0/16` runs through VPNbox"*, so any device can reach those subnets without configuring a proxy at all.
+
+For that, VPNbox runs the [BIRD](https://bird.network.cz/) routing daemon. Any prefix you list under a VPN's `exported_routes`:
+
+1. is injected into BIRD as a static route when the VPN connects, and
+2. is **advertised over RIPv2** to the rest of your network.
+
+Your L3 switch / core router learns the prefix dynamically and starts forwarding that subnet's traffic to the box, which carries it into the tunnel (with NAT applied on the way out). Stop the VPN and the announcement is **withdrawn automatically** — peers age the route out, so you never leave stale paths pointing at a dead tunnel. It's a clean way to extend a customer network to your whole site without touching a single client.
 
 ---
 
@@ -95,7 +157,7 @@ Every connected VPN gets interface `tunNN` / `xfrmNN` and routing table `NN` (wh
 ### 1. Clone and build
 
 ```bash
-git clone https://github.com/<you>/vpnbox.git
+git clone https://github.com/jperz/vpnbox.git
 cd vpnbox
 ```
 
