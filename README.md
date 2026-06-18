@@ -248,9 +248,13 @@ The two fields that deliver the security story:
 
 ```jsonc
 "openvpn": {
-  "config_file": "/data/vpns/acme.ovpn",
+  "config_file": "/data/vpns/acme.ovpn",  // optional: path to an .ovpn profile
+  "server": "vpn.acme.com 1194",           // optional: host (and port); --remote overrides the profile
   "username": "myuser",
   "password": "mypassword",
+  "ca": "",                                // optional: inline PEM, overrides ca/cert/key in the profile
+  "cert": "",
+  "key": "",
   "additional_args": ""
 }
 ```

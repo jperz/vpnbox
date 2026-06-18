@@ -7,8 +7,12 @@
 
   "openvpn": {
     "config_file": "/data/vpns/example.ovpn",
+    "server": "vpn.example.com:1194",
     "username": "myuser",
     "password": "mypassword",
+    "ca": "",
+    "cert": "",
+    "key": "",
     "additional_args": ""
   },
 

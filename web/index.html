@@ -92,6 +92,7 @@ main{padding:24px;max-width:1400px;margin:0 auto}
 .fc:focus{outline:none;border-color:var(--slate)}
 select.fc{cursor:pointer}
 input[type=number].fc{max-width:100px;flex:none}
+textarea.fc{min-height:70px;resize:vertical;font-family:'Consolas','Monaco',monospace;font-size:.78rem;line-height:1.4}
 
 /* toggle */
 .tog{position:relative;display:inline-flex;align-items:center;cursor:pointer}
@@ -223,6 +224,10 @@ details[open] .advcaret{transform:rotate(90deg)}
         <div class="fsec vpnsec" data-vtype="openvpn">
           <div class="fsec-title">OpenVPN</div>
           <div class="frow">
+            <label class="flabel" for="f-ovpn-srv">Server</label>
+            <input type="text" id="f-ovpn-srv" class="fc" placeholder="vpn.example.com 1194">
+          </div>
+          <div class="frow">
             <label class="flabel" for="f-ovpn-cfg">Config File</label>
             <input type="text" id="f-ovpn-cfg" class="fc" placeholder="/data/vpns/example.ovpn">
           </div>
@@ -233,6 +238,18 @@ details[open] .advcaret{transform:rotate(90deg)}
           <div class="frow">
             <label class="flabel" for="f-ovpn-pass">Password</label>
             <input type="password" id="f-ovpn-pass" class="fc" autocomplete="new-password">
+          </div>
+          <div class="frow top">
+            <label class="flabel" for="f-ovpn-ca" title="Inline PEM; overrides any ca in the config file">CA Certificate</label>
+            <textarea id="f-ovpn-ca" class="fc" placeholder="-----BEGIN CERTIFICATE-----" autocomplete="off" spellcheck="false"></textarea>
+          </div>
+          <div class="frow top">
+            <label class="flabel" for="f-ovpn-cert" title="Inline PEM client certificate">Client Certificate</label>
+            <textarea id="f-ovpn-cert" class="fc" placeholder="-----BEGIN CERTIFICATE-----" autocomplete="off" spellcheck="false"></textarea>
+          </div>
+          <div class="frow top">
+            <label class="flabel" for="f-ovpn-key" title="Inline PEM client private key">Client Key</label>
+            <textarea id="f-ovpn-key" class="fc" placeholder="-----BEGIN PRIVATE KEY-----" autocomplete="off" spellcheck="false"></textarea>
           </div>
         </div>
 
@@ -618,7 +635,9 @@ function formLoad(cfg){
   sv('f-oc-cfgfile',oc.config_file||'');sv('f-oc-args',oc.additional_args||'');
 
   const ov=cfg.openvpn||{};
+  sv('f-ovpn-srv',ov.server||'');
   sv('f-ovpn-cfg',ov.config_file||'');sv('f-ovpn-user',ov.username||'');sv('f-ovpn-pass',ov.password||'');
+  sv('f-ovpn-ca',ov.ca||'');sv('f-ovpn-cert',ov.cert||'');sv('f-ovpn-key',ov.key||'');
   sv('f-ovpn-args',ov.additional_args||'');
 
   const ip=cfg.ipsec||{};
@@ -659,7 +678,9 @@ function formCollect(){
     };
   } else if(type==='openvpn'){
     cfg.openvpn={
+      server:gv('f-ovpn-srv'),
       config_file:gv('f-ovpn-cfg'),username:gv('f-ovpn-user'),password:gv('f-ovpn-pass'),
+      ca:gv('f-ovpn-ca'),cert:gv('f-ovpn-cert'),key:gv('f-ovpn-key'),
       additional_args:gv('f-ovpn-args'),
     };
   } else if(type==='ipsec'){

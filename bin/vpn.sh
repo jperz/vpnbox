@@ -61,6 +61,7 @@ cmd_start() {
 
   export VPN_CONFIG_FILE="${CONFIG_DIR}/${VPNNAME}.json"
   eval "$(parse_json "$VPN_CONFIG_FILE" vpn_)"
+  apply_common_defaults
 
   # Capture all subsequent output in the log file.  web.py discards our
   # stdout/stderr, so without this nothing from cmd_start ever reaches the log.
@@ -204,6 +205,7 @@ cmd_stop() {
 
   export VPN_CONFIG_FILE="${CONFIG_DIR}/${VPNNAME}.json"
   eval "$(parse_json "$VPN_CONFIG_FILE" vpn_)"
+  apply_common_defaults
 
   local vpn_type
   vpn_type=$(get_vpn_type "$VPN_CONFIG_FILE")
@@ -299,6 +301,7 @@ cmd_status() {
 
     (
       eval "$(parse_json "$json" vpn_)"
+      apply_common_defaults
       local vpn_type if_name
       vpn_type=$(get_vpn_type "$json")
       if_name=$(get_if_name "$vpn_type" "$vpn_interface_id")

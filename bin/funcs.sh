@@ -20,6 +20,14 @@ function get_vpn_type {
   jq -r '.type // "openconnect"' "$1"
 }
 
+# Fill in defaults for common config fields left unset or empty in the VPN JSON.
+# Pid/log files default to /data/run/<interface_id>.pid and
+# /data/logs/<interface_id>.log. Call after parse_json, before the values are used.
+function apply_common_defaults {
+  : "${vpn_pid_file:=/data/run/${vpn_interface_id}.pid}"
+  : "${vpn_log_file:=/data/logs/${vpn_interface_id}.log}"
+}
+
 # NAT outgoing traffic on the VPN interface so packets forwarded/proxied through
 # the tunnel (LAN clients, squid, dante) leave with the tunnel's source address
 # instead of the box's. Added on vpn-up, removed on vpn-down. Idempotent: the -C

@@ -69,6 +69,22 @@ do_up() {
     n=$((n+1))
   done
 
+  # ── Default route (redirect-gateway) → VPN routing table ──────────────────
+  # --route-noexec suppressed OpenVPN's own default route; re-add it here, but
+  # scoped to this VPN's table so it only affects traffic steered there by an
+  # ip rule. route_vpn_gateway is the tunnel gateway; fall back to a dev-scoped
+  # route for point-to-point tun setups that don't supply one.
+  if [ "${REDIRECT_GATEWAY:-false}" = "true" ]; then
+    if [ -n "${route_vpn_gateway:-}" ]; then
+      $IPROUTE route replace default via "$route_vpn_gateway" dev "$dev" \
+        table "$VPN_INTERFACE_ID" 2>/dev/null || true
+    else
+      $IPROUTE route replace default dev "$dev" \
+        table "$VPN_INTERFACE_ID" 2>/dev/null || true
+    fi
+    echo "openvpn_updown[$VPNNAME]: default route -> table $VPN_INTERFACE_ID (redirect-gateway)"
+  fi
+
   # ── DNS from pushed dhcp-options ──────────────────────────────────────────
   local dns_servers="" pushed_domains=""
   local i=1

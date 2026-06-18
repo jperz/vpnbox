@@ -48,8 +48,31 @@ def vpn_names():
         return []
 
 
+def vpn_config(name):
+    try:
+        return json.loads((VPN_DIR / f"{name}.json").read_text())
+    except Exception:
+        return {}
+
+
+def vpn_pid_file(name):
+    """Resolve the pid file the same way vpn.sh does: honor the config's
+    pid_file, else default to /data/run/<interface_id>.pid."""
+    cfg = vpn_config(name)
+    pid = (cfg.get("pid_file") or "").strip()
+    return Path(pid) if pid else RUN_DIR / f"{cfg.get('interface_id')}.pid"
+
+
+def vpn_log_file(name):
+    """Resolve the log file the same way vpn.sh does: honor the config's
+    log_file, else default to /data/logs/<interface_id>.log."""
+    cfg = vpn_config(name)
+    log = (cfg.get("log_file") or "").strip()
+    return Path(log) if log else LOG_DIR / f"{cfg.get('interface_id')}.log"
+
+
 def vpn_status(name):
-    pid_file = RUN_DIR / f"{name}.pid"
+    pid_file = vpn_pid_file(name)
     if not pid_file.exists():
         return "stopped"
     try:
@@ -61,10 +84,7 @@ def vpn_status(name):
 
 
 def vpn_type(name):
-    try:
-        return json.loads((VPN_DIR / f"{name}.json").read_text()).get("type", "unknown")
-    except Exception:
-        return "unknown"
+    return vpn_config(name).get("type", "unknown")
 
 
 def vpn_list():
@@ -170,7 +190,7 @@ def service_set_enabled(svc_id, enabled):
 
 
 def read_logs(name, lines=200):
-    f = LOG_DIR / f"{name}.log"
+    f = vpn_log_file(name)
     if not f.exists():
         return "(no log file yet)"
     try:
